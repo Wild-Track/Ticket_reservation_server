@@ -6,18 +6,19 @@ void add_in_tail(int number, struct Node_ticket *node_ticket)
 {
     if(node_ticket->next == NULL)
     {
-        struct Ticket t;
-        struct Node_ticket nt;
+        struct Ticket* t;
+        struct Node_ticket* nt;
         
-        // t = (Ticket*) malloc(sizeof(Ticket));
+        nt = (struct Node_ticket*) malloc(sizeof(struct Node_ticket));
+        t = (struct Ticket*) malloc(sizeof(struct Ticket));
         
-        nt.current = &t;
-        nt.next = NULL;
+        t->number = number;
+        t->reserved = false;
         
-        t.number = number;
-        t.reserved = false;
+        nt->current = t;
+        nt->next = NULL;
         
-        node_ticket->next = &nt;
+        node_ticket->next = nt;
     }
     else 
     {
@@ -28,12 +29,14 @@ void add_in_tail(int number, struct Node_ticket *node_ticket)
 
 void init_ticket(struct Node_ticket *node_ticket)
 {
-    struct Ticket ticket;
+    struct Ticket* ticket;
     
-    ticket.number = 1;
-    ticket.reserved = false;
+    ticket = (struct Ticket*) malloc(sizeof(struct Ticket));
     
-    node_ticket->current = &ticket;
+    ticket->number = 1;
+    ticket->reserved = false;
+    
+    node_ticket->current = ticket;
     node_ticket->next = NULL;
     
     

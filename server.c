@@ -19,13 +19,15 @@ void consult_ticket();
 void reserved_ticket();
 void cancel_ticket();
 
-struct Node_ticket node_ticket;
-
 struct Data_thread
 {
     struct Node_ticket *node_ticket;
     int fdsocket_cli;
 };
+
+static struct Node_ticket node_ticket;
+
+pthread_mutex_t lock;
 
 int main()
 {
@@ -65,6 +67,12 @@ int main()
     
     len_addr_cli = sizeof(client);
     
+    if (pthread_mutex_init(&lock, NULL) != 0)
+    {
+        puts("mutex init failed \n");
+        exit(0);
+    }
+    
     while(MAIN_LOOP)
     {
         int fdsocket_cli = accept(listener, (struct sockaddr *)&client, (socklen_t *)&len_addr_cli);
@@ -74,19 +82,25 @@ int main()
             exit(0);
         }
         
-        static struct Data_thread data_thread;
-        data_thread.fdsocket_cli = fdsocket_cli;
-        data_thread.node_ticket = &node_ticket;
+        struct Data_thread *data_thread;
+        
+        data_thread = (struct Data_thread*) malloc(sizeof(struct Data_thread));
+        
+        data_thread->fdsocket_cli = fdsocket_cli;
+        data_thread->node_ticket = &node_ticket;
         
         // pthread_create return 0 (=false) if thread is created
-        if(pthread_create(&thread, NULL, handle_client, &data_thread))
+        if(pthread_create(&thread, NULL, handle_client, data_thread))
         {
             puts("thread not create \n");
             exit(0);
         }
+        printf("%d", node_ticket.current->number);
     }
     
     close(listener);
+    
+    pthread_mutex_destroy(&lock);
     
     return 0;
 }
@@ -94,15 +108,20 @@ int main()
 
 void *handle_client(void *data_thread_server)
 {
+    pthread_mutex_lock(&lock);
+    
     struct Data_thread data_thread = *(struct Data_thread*)data_thread_server;
     int socket_cli = data_thread.fdsocket_cli;
     struct Node_ticket *node_ticket = data_thread.node_ticket;
+    struct Node_ticket nt = *node_ticket;
+    
+    pthread_mutex_unlock(&lock);
+    
     char message[500];
     int not_exit = 1;
     
     rcv_message(socket_cli, message);
 
-    puts(message);
     while(not_exit)
     {
         if(strcmp(message, "consult") == 0)
@@ -148,13 +167,17 @@ void rcv_message(int socket_cli, char *message)
 
 void consult_ticket(int socket_cli)
 {
-    char tickets[500];
+    char tickets[300];
+    tickets[0] = 0;
     char response[50];
     
     list(&node_ticket, tickets);
-    send(socket_cli, tickets, sizeof(tickets), 0);
+    if(send(socket_cli, tickets, sizeof(tickets), 0) != sizeof(tickets))
+    {
+        puts("Send doesn't work properly");
+    }
     
-    rcv_message(socket_cli, response);
+    // rcv_message(socket_cli, response);
     
     
 }
