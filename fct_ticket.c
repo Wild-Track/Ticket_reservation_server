@@ -26,24 +26,22 @@ void add_in_tail(int number, struct Node_ticket *node_ticket)
 }
 
 
-struct Node_ticket *init_ticket()
+void init_ticket(struct Node_ticket *node_ticket)
 {
-    struct Node_ticket node_ticket;
     struct Ticket ticket;
     
     ticket.number = 1;
     ticket.reserved = false;
     
-    node_ticket.current = &ticket;
-    node_ticket.next = NULL;
+    node_ticket->current = &ticket;
+    node_ticket->next = NULL;
     
     
     for(int i = 2; i <= 100; i++)
     {
-        add_in_tail(i, &node_ticket);
+        add_in_tail(i, node_ticket);
     }
     
-    return &node_ticket;
 }
 
 

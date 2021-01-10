@@ -19,15 +19,21 @@ void consult_ticket();
 void reserved_ticket();
 void cancel_ticket();
 
+struct Node_ticket node_ticket;
+
+struct Data_thread
+{
+    struct Node_ticket *node_ticket;
+    int fdsocket_cli;
+};
 
 int main()
 {
-    puts("hgfd");
-    
+    init_ticket(&node_ticket);
+
     struct sockaddr_in server, client;
     int len_addr_serv, len_addr_cli;
     pthread_t thread;
-    struct Node_ticket *node_ticket = init_ticket();
     
     int listener = socket(AF_INET, SOCK_STREAM, 0);
     
@@ -68,8 +74,12 @@ int main()
             exit(0);
         }
         
+        static struct Data_thread data_thread;
+        data_thread.fdsocket_cli = fdsocket_cli;
+        data_thread.node_ticket = &node_ticket;
+        
         // pthread_create return 0 (=false) if thread is created
-        if(pthread_create(&thread, NULL, handle_client, &fdsocket_cli))
+        if(pthread_create(&thread, NULL, handle_client, &data_thread))
         {
             puts("thread not create \n");
             exit(0);
@@ -82,9 +92,11 @@ int main()
 }
 
 
-void *handle_client(void *fdsocket_cli)
+void *handle_client(void *data_thread_server)
 {
-    int socket_cli = *(int*)fdsocket_cli;
+    struct Data_thread data_thread = *(struct Data_thread*)data_thread_server;
+    int socket_cli = data_thread.fdsocket_cli;
+    struct Node_ticket *node_ticket = data_thread.node_ticket;
     char message[500];
     int not_exit = 1;
     
@@ -95,7 +107,7 @@ void *handle_client(void *fdsocket_cli)
     {
         if(strcmp(message, "consult") == 0)
         {
-            consult_ticket();
+            consult_ticket(socket_cli);
         }
         else if(strcmp(message, "reserve") == 0)
         {
@@ -134,7 +146,15 @@ void rcv_message(int socket_cli, char *message)
     }
 }
 
-void consult_ticket()
+void consult_ticket(int socket_cli)
 {
+    char tickets[500];
+    char response[50];
+    
+    list(&node_ticket, tickets);
+    send(socket_cli, tickets, sizeof(tickets), 0);
+    
+    rcv_message(socket_cli, response);
+    
     
 }
