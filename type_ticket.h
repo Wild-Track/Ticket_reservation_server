@@ -15,4 +15,17 @@ struct Node_ticket
     struct Node_ticket *next;
 };
 
+struct Reservation
+{
+    char *last_name;
+    char *first_name;
+    struct Ticket *ticket;
+};
+
+struct Node_reservation
+{
+    struct Reservation *current;
+    struct Node_reservation *next;
+};
+
 #endif

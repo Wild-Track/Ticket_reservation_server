@@ -15,17 +15,19 @@
 
 void *handle_client(void *arg);
 void rcv_message(int socket_cli, char *message);
-void consult_ticket();
-void reserved_ticket();
-void cancel_ticket();
+void consult_ticket(int socket_cli);
+void reserved_ticket(struct Data_thread *data_thread);
+void cancel_ticket(int socket_cli);
 
 struct Data_thread
 {
     struct Node_ticket *node_ticket;
+    struct Node_reservation *node_reservation;
     int fdsocket_cli;
 };
 
 static struct Node_ticket node_ticket;
+static struct Node_reservation node_reservation;
 
 pthread_mutex_t lock;
 
@@ -88,6 +90,7 @@ int main()
         
         data_thread->fdsocket_cli = fdsocket_cli;
         data_thread->node_ticket = &node_ticket;
+        data_thread->node_reservation = &node_reservation;
         
         // pthread_create return 0 (=false) if thread is created
         if(pthread_create(&thread, NULL, handle_client, data_thread))
@@ -95,7 +98,6 @@ int main()
             puts("thread not create \n");
             exit(0);
         }
-        printf("%d", node_ticket.current->number);
     }
     
     close(listener);
@@ -114,23 +116,26 @@ void *handle_client(void *data_thread_server)
     int socket_cli = data_thread.fdsocket_cli;
     struct Node_ticket *node_ticket = data_thread.node_ticket;
     struct Node_ticket nt = *node_ticket;
+    struct Node_reservation *node_reservation = data_thread.node_reservation;
+    struct Node_reservation nr = *node_reservation;
     
     pthread_mutex_unlock(&lock);
     
     char message[500];
     int not_exit = 1;
     
-    rcv_message(socket_cli, message);
 
     while(not_exit)
     {
+        rcv_message(socket_cli, message);
+        
         if(strcmp(message, "consult") == 0)
         {
             consult_ticket(socket_cli);
         }
         else if(strcmp(message, "reserve") == 0)
         {
-            // reserved_ticket();
+            reserved_ticket(&data_thread);
         }
         else if(strcmp(message, "cancel") == 0)
         {
@@ -140,6 +145,7 @@ void *handle_client(void *data_thread_server)
         {
             not_exit = 0;
         }
+        message[0] = 0;
     }
     
     pthread_exit(NULL);
@@ -154,7 +160,7 @@ void rcv_message(int socket_cli, char *message)
     
     while(not_finish)
     {
-        len_message = recv(socket_cli, buffer, LEN_BUFFER, 0);
+        len_message += recv(socket_cli, buffer, LEN_BUFFER, 0);
         if(buffer[len_message - 1] == '\n')
         {
             buffer[len_message - 1] = 0;
@@ -171,13 +177,78 @@ void consult_ticket(int socket_cli)
     tickets[0] = 0;
     char response[50];
     
-    list(&node_ticket, tickets);
-    if(send(socket_cli, tickets, sizeof(tickets), 0) != sizeof(tickets))
+    list_ticket(&node_ticket, tickets);
+    if(send(socket_cli, tickets, strlen(tickets), 0) != sizeof(tickets))
     {
         puts("Send doesn't work properly");
     }
     
-    // rcv_message(socket_cli, response);
+}
+
+
+void reserved_ticket(struct Data_thread *data_thread)
+{
+    char response[500];
+    char delimiter[] = ",";
+    char last_name[50], first_name[50], num_ticket[10];
+    int number_ticket, not_found = 1, end = 1;
+
+    rcv_message(data_thread->fdsocket_cli, response);
     
+    char *ptr = strtok(response, delimiter);
+    
+    strcpy(last_name, ptr);
+    ptr = strtok(NULL, delimiter);
+    strcpy(first_name, ptr);
+    ptr = strtok(NULL, delimiter);
+    strcpy(num_ticket, delimiter);
+    
+    number_ticket = atoi(num_ticket);
+
+    pthread_mutex_lock(&lock);
+
+    int socket_cli = data_thread->fdsocket_cli;
+    struct Node_ticket *node_ticket = data_thread->node_ticket;
+    struct Node_ticket nt = *node_ticket;
+    struct Node_reservation *node_reservation = data_thread->node_reservation;
+    struct Node_reservation nr = *node_reservation;
+    
+    struct Node_ticket *p = &nr;
+
+    while(not_found || end)
+    {
+        if(p != NULL)
+        {
+            if (p->current->number != number_ticket)
+            {
+                p = p->next;    
+            }
+            else
+            {
+                not_found = 0;
+                add_in_tail_reservation(last_name, first_name, &nr, p->current);
+                set_reservation_ticket(p->current, true);
+            }
+        }
+        else
+        {
+            end = 0;
+        }
+    }
+
+    pthread_mutex_unlock(&lock);
+    
+    if(end == 0)
+    {
+        char *message = "this place is already reserved";
+        send(socket_cli, message, strlen(message), 0);
+    }
+    else
+    {
+        char *message = "you're reservation has been correctly realized";
+        send(socket_cli, message, strlen(message), 0);
+    }
     
 }
+
+

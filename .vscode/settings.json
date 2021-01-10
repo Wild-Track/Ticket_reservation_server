@@ -1,0 +1,8 @@
+{
+    "files.associations": {
+        "*.java": "java",
+        "limits": "c",
+        "type_traits": "c",
+        "typeinfo": "c"
+    }
+}
