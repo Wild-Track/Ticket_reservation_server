@@ -140,6 +140,7 @@ void *handle_client(void *data_thread_server)
         else if(strcmp(message, "cancel") == 0)
         {
             // cancel_ticket();
+            // TODO
         }
         else if(strcmp(message, "quit") == 0)
         {
