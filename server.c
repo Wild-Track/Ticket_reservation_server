@@ -13,11 +13,10 @@
 #define MAIN_LOOP 1
 #define LEN_BUFFER 4096
 
-void *handle_client(void *arg);
-void rcv_message(int socket_cli, char *message);
-void consult_ticket(int socket_cli);
-void reserved_ticket(struct Data_thread *data_thread);
-void cancel_ticket(int socket_cli);
+static struct Node_ticket node_ticket;
+static struct Node_reservation node_reservation;
+
+pthread_mutex_t lock;
 
 struct Data_thread
 {
@@ -26,10 +25,11 @@ struct Data_thread
     int fdsocket_cli;
 };
 
-static struct Node_ticket node_ticket;
-static struct Node_reservation node_reservation;
-
-pthread_mutex_t lock;
+void *handle_client(void *arg);
+void rcv_message(int socket_cli, char *message);
+void consult_ticket(int socket_cli);
+void reserved_ticket(struct Data_thread *data_thread);
+void cancel_ticket(int socket_cli);
 
 int main()
 {
@@ -178,7 +178,7 @@ void consult_ticket(int socket_cli)
     char response[50];
     
     list_ticket(&node_ticket, tickets);
-    if(send(socket_cli, tickets, strlen(tickets), 0) != sizeof(tickets))
+    if(send(socket_cli, tickets, strlen(tickets), 0) != strlen(tickets))
     {
         puts("Send doesn't work properly");
     }
@@ -213,7 +213,7 @@ void reserved_ticket(struct Data_thread *data_thread)
     struct Node_reservation *node_reservation = data_thread->node_reservation;
     struct Node_reservation nr = *node_reservation;
     
-    struct Node_ticket *p = &nr;
+    struct Node_ticket *p = &nt;
 
     while(not_found || end)
     {
