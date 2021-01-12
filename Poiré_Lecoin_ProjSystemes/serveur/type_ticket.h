@@ -19,6 +19,7 @@ struct Reservation
 {
     char *last_name;
     char *first_name;
+    char *file_number;
     struct Ticket *ticket;
 };
 

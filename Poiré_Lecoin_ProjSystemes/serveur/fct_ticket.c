@@ -1,5 +1,6 @@
 #include<stdio.h>
 #include<string.h>
+#include<time.h>
 #include"fct_ticket.h"
 
 void add_in_tail_ticket(int number, struct Node_ticket *node_ticket)
@@ -78,6 +79,8 @@ void add_in_tail_reservation(char *last_name, char *first_name, struct Node_rese
 {
     if(node_reservation->current == NULL)
     {
+        char *random;
+        random = (char*) malloc(10 * sizeof(char));
         struct Reservation *reservation; 
         reservation = (struct Reservation*) malloc(sizeof(struct Reservation));
         
@@ -85,11 +88,20 @@ void add_in_tail_reservation(char *last_name, char *first_name, struct Node_rese
         reservation->last_name = last_name;
         reservation->ticket = ticket;
         
+        srand(time(NULL));
+        for(int i = 0; i < 10; i++)
+        {
+            random[i] = rand() % 10;
+        }
+        reservation->file_number = random;
+        
         node_reservation->current = reservation;
         node_reservation->next = NULL;
     }
     else if(node_reservation->next == NULL)
     {
+        char *random;
+        random = (char *)malloc(10 * sizeof(char));
         struct Reservation *r;
         struct Node_reservation *nr;
 
@@ -99,6 +111,13 @@ void add_in_tail_reservation(char *last_name, char *first_name, struct Node_rese
         r->first_name = first_name;
         r->last_name = last_name;
         r->ticket = ticket;
+
+        srand(time(NULL));
+        for (int i = 0; i < 10; i++)
+        {
+            random[i] = rand() % 10;
+        }
+        r->file_number = random;
 
         nr->current = r;
         nr->next = NULL;

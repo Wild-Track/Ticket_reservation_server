@@ -29,11 +29,13 @@ void *handle_client(void *arg);
 void rcv_message(int socket_cli, char *message);
 void consult_ticket(int socket_cli);
 void reserved_ticket(struct Data_thread *data_thread);
-void cancel_ticket(int socket_cli);
+void cancel_ticket(struct Data_thread *data_thread);
 
 int main()
 {
     init_ticket(&node_ticket);
+    node_reservation.current = NULL;
+    node_reservation.next = NULL;
 
     struct sockaddr_in server, client;
     int len_addr_serv, len_addr_cli;
@@ -115,9 +117,7 @@ void *handle_client(void *data_thread_server)
     struct Data_thread data_thread = *(struct Data_thread*)data_thread_server;
     int socket_cli = data_thread.fdsocket_cli;
     struct Node_ticket *node_ticket = data_thread.node_ticket;
-    struct Node_ticket nt = *node_ticket;
     struct Node_reservation *node_reservation = data_thread.node_reservation;
-    struct Node_reservation nr = *node_reservation;
     
     pthread_mutex_unlock(&lock);
     
@@ -176,13 +176,9 @@ void consult_ticket(int socket_cli)
 {
     char tickets[300];
     tickets[0] = 0;
-    char response[50];
     
     list_ticket(&node_ticket, tickets);
-    if(send(socket_cli, tickets, strlen(tickets), 0) != strlen(tickets))
-    {
-        puts("Send doesn't work properly");
-    }
+    send(socket_cli, tickets, strlen(tickets), 0);
     
 }
 
@@ -229,27 +225,80 @@ void reserved_ticket(struct Data_thread *data_thread)
                 not_found = 0;
                 add_in_tail_reservation(last_name, first_name, &nr, p->current);
                 set_reservation_ticket(p->current, true);
+                
+                char *message = "you're reservation has been correctly realized";
+                send(socket_cli, message, strlen(message), 0);
             }
         }
         else
         {
             end = 0;
+            char *message = "this place is already reserved";
+            send(socket_cli, message, strlen(message), 0);
         }
     }
 
     pthread_mutex_unlock(&lock);
     
-    if(end == 0)
-    {
-        char *message = "this place is already reserved";
-        send(socket_cli, message, strlen(message), 0);
-    }
-    else
-    {
-        char *message = "you're reservation has been correctly realized";
-        send(socket_cli, message, strlen(message), 0);
-    }
-    
 }
 
+void cancel_ticket(struct Data_thread *data_thread)
+{
+    int not_found = 1, end = 1;
+    
+    char response[500], last_name[50], *file_number, delimiter[] = ",";
 
+    rcv_message(data_thread->fdsocket_cli, response);
+
+    char *ptr = strtok(response, delimiter);
+
+    strcpy(last_name, ptr);
+    ptr = strtok(NULL, delimiter);
+    strcpy(file_number, ptr);
+
+    pthread_mutex_lock(&lock);
+
+    int socket_cli = data_thread->fdsocket_cli;
+    struct Node_ticket *node_ticket = data_thread->node_ticket;
+    struct Node_ticket nt = *node_ticket;
+    struct Node_reservation *node_reservation = data_thread->node_reservation;
+    struct Node_reservation nr = *node_reservation;
+
+    struct Node_reservation *p = &nr;
+
+    while (not_found || end)
+    {
+        if (p != NULL)
+        {
+            if (p->current->file_number != file_number)
+            {
+                p = p->next;
+            }
+            else
+            {
+                not_found = 0;
+
+                struct Node_reservation *curr, **prev;
+                for (prev = &node_reservation; (curr) = *prev; prev = &curr->next)
+                {
+                    if (strcmp(curr->current->file_number, file_number) == 0 && strcmp(curr->current->last_name, last_name) == 0)
+                    {
+                        *prev = curr->next,
+                        free(curr);
+                        break;
+                    }
+                }
+
+                set_reservation_ticket(p->current->ticket, false);
+            }
+        }
+        else
+        {
+            end = 0;
+            char *message = "this place is already reserved";
+            send(socket_cli, message, strlen(message), 0);
+        }
+    }
+
+    pthread_mutex_unlock(&lock);
+}
